@@ -30,79 +30,79 @@ import feeds
 import os
 
 class Feedesk():
-	def __init__(self):
-		if os.name == 'posix':
-			self.app_path = os.environ['HOME']
-			self.cmd = 'gconftool -s /desktop/gnome/background/picture_filename -t string "%s"'
-		elif os.name == 'nt':
-			self.app_path = os.environ['APPDATA']
-			self.cmd = os.path.join(os.getcwd(), 'windesk', 'windesk.exe') + ' "%s"'
-		
-		self.app_path = os.path.join(self.app_path, '.feedesk')
-		self.pic_path = os.path.join(self.app_path, 'picture')
-		# create necessary folders
-		try:
-			os.mkdir(self.app_path)
-			os.mkdir(self.pic_path)
-		except:
-			pass
+    def __init__(self):
+        if os.name == 'posix':
+            self.app_path = os.environ['HOME']
+            self.cmd = 'gconftool -s /desktop/gnome/background/picture_filename -t string "%s"'
+        elif os.name == 'nt':
+            self.app_path = os.environ['APPDATA']
+            self.cmd = os.path.join(os.getcwd(), 'windesk', 'windesk.exe') + ' "%s"'
+        
+        self.app_path = os.path.join(self.app_path, '.feedesk')
+        self.pic_path = os.path.join(self.app_path, 'picture')
+        # create necessary folders
+        try:
+            os.mkdir(self.app_path)
+            os.mkdir(self.pic_path)
+        except:
+            pass
 
-		# load config
-		cfg_path = os.path.join(self.app_path, 'config.cfg')
-		self.cfg = config.Config(cfg_path)
-		
-		# load feeds
-		self.fds = feeds.Feeds(self.cfg.getfeedlist(),
-				os.path.join(self.app_path, 'index.pickle'),
-				self.pic_path)
-		
-		# load plugins
-		##TODO
+        # load config
+        cfg_path = os.path.join(self.app_path, 'config.cfg')
+        self.cfg = config.Config(cfg_path)
+        
+        # load feeds
+        self.fds = feeds.Feeds(self.cfg.getfeedlist(),
+                os.path.join(self.app_path, 'index.pickle'),
+                self.pic_path)
+        
+        # load plugins
+        ##TODO
 
-	def set_wallpaper(self):
-		type = self.cfg.get('type')
-		if type == 'random':
-			pic = self.fds.get_random_pic()
-			if pic != None:
-				cmd = self.cmd % pic['file']
-				os.system(cmd)
-		elif type == '':
-			##TODO: 
-			pass
-	
-	def daemon(self):
-		import time
-		ifeed = self.cfg.getfloat('interval_feed')
-		iwall = self.cfg.getfloat('interval_wallpaper')
+    def set_wallpaper(self):
+        type = self.cfg.get('type')
+        if type == 'random':
+            pic = self.fds.get_random_pic()
+            if pic != None:
+                cmd = self.cmd % pic['file']
+                os.system(cmd)
+        elif type == '':
+            ##TODO: 
+            pass
+    
+    def daemon(self):
+        import time
+        ifeed = self.cfg.getfloat('interval_feed')
+        iwall = self.cfg.getfloat('interval_wallpaper')
 
-		lfeed = ifeed
-		lwall = iwall
-		while True:
-			if ifeed == lfeed:
-				print 'feedesk.py: Info: Refreshing feeds.'
-				self.fds.refresh()
+        lfeed = ifeed
+        lwall = iwall
+        while True:
+            if ifeed == lfeed:
+                print 'feedesk.py: Info: Refreshing feeds.'
+                self.fds.refresh()
 
-			if iwall == lwall:
-				print 'feedesk.py: Info: Setting wallpaper.'
-				self.set_wallpaper()
-			
-			# find next wake up time
-			if lfeed < lwall:
-				sleep_time = lfeed
-				lfeed = ifeed
-				lwall -= sleep_time
-			else:
-				sleep_time = lwall
-				lwall = iwall
-				lfeed -= sleep_time
+            if iwall == lwall:
+                print 'feedesk.py: Info: Setting wallpaper.'
+                self.set_wallpaper()
+            
+            # find next wake up time
+            if lfeed < lwall:
+                sleep_time = lfeed
+                lfeed = ifeed
+                lwall -= sleep_time
+            else:
+                sleep_time = lwall
+                lwall = iwall
+                lfeed -= sleep_time
 
-			# sleep and renew times
-			time.sleep(sleep_time * 60)
+            # sleep and renew times
+            time.sleep(sleep_time * 60)
 
 if __name__ == '__main__':
-	fd = Feedesk()
-	fd.daemon()
-	#test()
+    fd = Feedesk()
+    fd.daemon()
+    #test()
 
 ## VERSION HISTORY
 # 0.1.0 Original Version, Downloads the latest sentense.me wallpaper
