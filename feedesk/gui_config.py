@@ -101,6 +101,11 @@ class FeedPanel(wx.Panel):
         vbox.Add(self.add, 0, wx.TOP, 5)
         vbox.Add(self.edit, 0, wx.TOP, 5)
         vbox.Add(self.delete, 0, wx.TOP, 5)
+
+        # Bind events
+        self.add.Bind(wx.EVT_BUTTON, self.on_add)
+        self.edit.Bind(wx.EVT_BUTTON, self.on_edit)
+        self.delete.Bind(wx.EVT_BUTTON, self.on_delete)
         
         # The sizer
         hbox = wx.BoxSizer(wx.HORIZONTAL)
@@ -110,6 +115,15 @@ class FeedPanel(wx.Panel):
         self.SetSizer(hbox)
         self.SetAutoLayout(True)
         hbox.Fit(self)
+
+    def on_add(self, cmd_evt):
+        print 'Add not implemented.'
+
+    def on_edit(self, cmd_evt):
+        print 'Edit not implemented.'
+
+    def on_delete(self, cmd_evt):
+        print 'Delete not implemented.'
 
 class ConfigWindow(wx.Frame):
     """
@@ -139,17 +153,30 @@ class ConfigWindow(wx.Frame):
         hbox = wx.BoxSizer(wx.HORIZONTAL)
         hbox.Add(self.save, 1, wx.EXPAND | wx.RIGHT, 5)
         hbox.Add(self.cancel, 1, wx.EXPAND | wx.LEFT, 5)
+
+        # Bind events
+        self.save.Bind(wx.EVT_BUTTON, self.on_save)
+        self.cancel.Bind(wx.EVT_BUTTON, self.on_cancel)
         
         # The sizer
         vbox = wx.BoxSizer(wx.VERTICAL)
         vbox.Add(nb, 1, wx.EXPAND | wx.ALL, 10)
         vbox.Add(hbox, 0, wx.EXPAND | wx.RIGHT | wx.LEFT | wx.BOTTOM, 10)
-        
+
         # Set sizer
         self.SetSizer(vbox)
         self.SetAutoLayout(True)
         vbox.Fit(self)
         self.Show(True)
+
+    def on_save(self, cmd_evt):
+        print 'Save not implemented'
+    
+    def on_cancel(self, cmd_evt):
+        '''
+        Exit the gui_config.
+        '''
+        wx.Exit()
 
 def main():
     app = wx.App(False)
