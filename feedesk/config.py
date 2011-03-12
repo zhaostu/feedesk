@@ -26,7 +26,7 @@ import os
 import ConfigParser
 
 DEFAULT_OPTIONS = {'screen_width': 1024, 'screen_height': 768,
-        'interval_feed': 240, 'interval_wallpaper': 10, 'type': 'random'}
+        'interval_feed': 240, 'interval_wallpaper': 10, 'type': 'Default'}
 
 class Config():
     def __init__(self, file):
@@ -67,17 +67,17 @@ class Config():
         self.config.set('options', key, value)
 
     def get(self, key):
-        return self.config.get('options', key)
+        try:
+            return self.config.get('options', key)
+        except:
+            return DEFAULT_OPTIONS[key]
     
     def getint(self, key):
-        return self.config.getint('options', key)
+        try:
+            return self.config.getint('options', key)
+        except:
+            return DEFAULT_OPTIONS[key]
     
-    def getbool(self, key):
-        return self.config.getboolean('options', key)
-        
-    def getfloat(self, key):
-        return self.config.getfloat('options', key)
-
     def clear_feeds(self):
         self.config.remove_section('feeds')
         self.config.remove_section('feeds_disabled')
