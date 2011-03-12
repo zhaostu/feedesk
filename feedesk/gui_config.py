@@ -41,6 +41,7 @@ class MiscPanel(wx.Panel):
         wx.Panel.__init__(self,parent)
 
         self.cfg = cfg
+        self.update_choices = ('Default', 'Random', 'Suffle', 'Latest')
 
         # Select Interval of feed
         feed_txt = wx.StaticText(self, label='Feed update interval (min):')
@@ -52,7 +53,7 @@ class MiscPanel(wx.Panel):
 
         # Select the type of wallpaper update.
         update_txt = wx.StaticText(self, label='Wallpaper update type:')
-        self.update_cb = wx.Choice(self, wx.ID_ANY, choices=('Default', 'Random', 'Suffle', 'Latest'), style=wx.CB_READONLY) 
+        self.update_cb = wx.Choice(self, wx.ID_ANY, choices=self.update_choices, style=wx.CB_READONLY) 
 
         bold_font = wx.Font(10, wx.DEFAULT, wx.NORMAL, wx.BOLD)
 
@@ -62,10 +63,10 @@ class MiscPanel(wx.Panel):
 
 
         width_txt = wx.StaticText(self, label='Width:')
-        self.width_sc = wx.SpinCtrl(self, wx.ID_ANY, '1024', min=1, max=9999)
+        self.width_sc = wx.SpinCtrl(self, wx.ID_ANY, '1024', min=320, max=16000)
 
         height_txt = wx.StaticText(self, label='Height:')
-        self.height_sc = wx.SpinCtrl(self, wx.ID_ANY, '768', min=1, max=9999)
+        self.height_sc = wx.SpinCtrl(self, wx.ID_ANY, '768', min=240, max=12000)
 
         # The sizer
         grid_sizer = wx.FlexGridSizer(0, 2)
@@ -91,7 +92,23 @@ class MiscPanel(wx.Panel):
         self.load_options()
 
     def load_options(self):
-        pass
+        self.feed_sc.SetValue(self.cfg.getint('interval_feed'))
+        self.wall_sc.SetValue(self.cfg.getint('interval_wallpaper'))
+        self.width_sc.SetValue(self.cfg.getint('screen_width'))
+        self.height_sc.SetValue(self.cfg.getint('screen_height'))
+
+        t = self.cfg.get('type')
+        if t not in self.update_choices:
+            t = 'Default'
+        self.update_cb.SetSelection(self.update_choices.index(t))
+
+    def save_options(self):
+        self.cfg.set('interval_feed', self.feed_sc.GetValue())
+        self.cfg.set('interval_wallpaper', self.wall_sc.GetValue())
+        self.cfg.set('screen_width', self.width_sc.GetValue())
+        self.cfg.set('screen_height', self.height_sc.GetValue())
+
+        self.cfg.set('type', self.update_choices[self.update_cb.GetSelection()])
 
 class FeedListCtrl(wx.ListCtrl, TextEditMixin, CheckListCtrlMixin):
     """
@@ -221,6 +238,7 @@ class ConfigWindow(wx.Frame):
         Save the options in to config file.
         '''
         self.feed_panel.save_feeds()
+        self.misc_panel.save_options()
         self.cfg.save()
     
     def _on_cancel_click(self, event):
