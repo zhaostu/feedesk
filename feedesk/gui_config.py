@@ -61,12 +61,14 @@ class MiscPanel(wx.Panel):
         resolution_txt = wx.StaticText(self, label='Screen Resolution:')
         self.detect = wx.Button(self, label='Auto Detect')
 
-
         width_txt = wx.StaticText(self, label='Width:')
         self.width_sc = wx.SpinCtrl(self, wx.ID_ANY, '1024', min=320, max=16000)
 
         height_txt = wx.StaticText(self, label='Height:')
         self.height_sc = wx.SpinCtrl(self, wx.ID_ANY, '768', min=240, max=12000)
+
+        # Bind events
+        self.detect.Bind(wx.EVT_BUTTON, self._on_detect_click)
 
         # The sizer
         grid_sizer = wx.FlexGridSizer(0, 2)
@@ -90,6 +92,15 @@ class MiscPanel(wx.Panel):
         grid_sizer.Fit(self)
 
         self.load_options()
+
+    def _on_detect_click(self, event):
+        '''
+        Auto detect the screen resolution.
+        '''
+        width, height = wx.DisplaySize()
+        self.width_sc.SetValue(width)
+        self.height_sc.SetValue(height)
+        
 
     def load_options(self):
         self.feed_sc.SetValue(self.cfg.getint('interval_feed'))
