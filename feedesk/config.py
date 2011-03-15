@@ -22,67 +22,107 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 __author__ = 'Yanglei Zhao <z12y12l12 [AT] gmail [DOT] com>'
 
+import os
 import ConfigParser
 
-DEFAULT_CONFIG = {'screen_width': 1024, 'screen_height': 768,
-		'interval_feed': 240, 'interval_wallpaper': 10, 'type': 'random'}
-
-DEFAULT_FEEDS = {'wallpaper': 'http://api.flickr.com/services/feeds/groups_pool.gne?id=19604169@N00&lang=en-us&format=rss_200'}
+DEFAULT_OPTIONS = {'screen_width': 1024, 'screen_height': 768,
+        'interval_feed': 240, 'interval_wallpaper': 10, 'type': 'Default'}
 
 class Config():
-	def __init__(self, file, default_section='feedesk'):
-		self.default_section = default_section
-		self.file = file
+    def __init__(self, file):
+        self.options_section = 'options'
+        self.feeds_section = 'feeds'
+        self.feeds_disabled_section = 'feeds_disabled'
+        self.file = file
 
-		self.config = ConfigParser.RawConfigParser()
-		self.load()
+        self.config = ConfigParser.RawConfigParser()
+        self.load()
 
-	def get(self, key, section=None):
-		if section == None:
-			section = self.default_section
-		return self.config.get(section, key)
-	
-	def getint(self, key, section=None):
-		if section == None:
-			section = self.default_section
-		return self.config.getint(section, key)
-	
-	def getbool(self, key, section=None):
-		if section == None:
-			section = self.default_section
-		return self.config.getboolean(section, key)
-		
-	def getfloat(self, key, section=None):
-		if section == None:
-			section = self.default_section
-		return self.config.getfloat(section, key)
+    def load(self):
+        try:
+            with open(self.file, 'rb') as fin:
+                self.config.readfp(fin)
+        except Exception as e:
+            print 'config.py: Warning: Unable to load config file:', e
+            self.save_default()
 
-	def getfeedlist(self):
-		return self.config.items('feeds')
-	
-	def load(self):
-		try:
-			with open(self.file, 'rb') as fin:
-				self.config.readfp(fin)
-		except Exception as e:
-			print 'config.py: Warning: Unable to load config file:', e
-			print 'config.py: Info: Generating config file.'
-			self.save_default()
+    def save_default(self):
+        print 'config.py: Info: Generating config file.'
+        self.config = ConfigParser.RawConfigParser()
+        self.config.add_section('options')
+        for key, value in DEFAULT_OPTIONS.iteritems():
+            self.set(key, value)
 
-	def save_default(self):
-		self.config = ConfigParser.RawConfigParser()
-		self.config.add_section(self.default_section)
-		for key, value in DEFAULT_CONFIG.iteritems():
-			self.config.set(self.default_section, key, value)
+        self.clear_feeds()
+        self.save()
 
-		self.config.add_section('feeds')
-		for key, value in DEFAULT_FEEDS.iteritems():
-			self.config.set('feeds', key, value)
-		self.save()
+    def save(self):
+        try:
+            with open(self.file, 'wb') as fout:
+                self.config.write(fout)
+        except Exception as e:
+            print 'config.py: Warning: Unable to save config file:', e
 
-	def save(self):
-		try:
-			with open(self.file, 'wb') as fout:
-				self.config.write(fout)
-		except Exception as e:
-			print 'config.py: Warning: Unable to save config file:', e
+    def set(self, key, value):
+        self.config.set('options', key, value)
+
+    def get(self, key):
+        try:
+            return self.config.get('options', key)
+        except:
+            return DEFAULT_OPTIONS[key]
+    
+    def getint(self, key):
+        try:
+            return self.config.getint('options', key)
+        except:
+            return DEFAULT_OPTIONS[key]
+    
+    def clear_feeds(self):
+        self.config.remove_section('feeds')
+        self.config.remove_section('feeds_disabled')
+        self.config.add_section('feeds')
+        self.config.add_section('feeds_disabled')
+
+    def set_feeds(self, feeds):
+        '''
+        Add feeds into the config file.
+
+        Args: feeds, a list of tuple [(url, enabled), (...), ...]
+        '''
+        for i, (url, enabled) in enumerate(feeds):
+            if enabled:
+                self.config.set('feeds', str(i), url)
+            else:
+                self.config.set('feeds_disabled', str(i), url)
+
+
+    def get_feeds(self):
+        return self.config.items('feeds')
+
+    def get_all_feeds(self):
+        feeds = self.config.items('feeds')
+        feeds_disabled = self.config.items('feeds_disabled')
+
+        feeds = [(url, True) for id, url in sorted(feeds)]
+        feeds_disabled = [(url, False) for id, url in sorted(feeds_disabled)]
+
+        feeds.extend(feeds_disabled)
+        return feeds
+
+def create_app_dir():
+    home_path = get_home_path()
+    try:
+        os.mkdir(os.path.join(home_path, '.feedesk'))
+    except:
+        pass
+    try:
+        os.mkdir(os.path.join(home_path, '.feedesk', 'picture'))
+    except:
+        pass
+
+def get_home_path():
+    if os.name == 'posix':
+        return os.environ['HOME']
+    elif os.name == 'nt':
+        return os.environ['APPDATA']

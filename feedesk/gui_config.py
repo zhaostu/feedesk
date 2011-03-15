@@ -25,16 +25,23 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 __author__ = 'Yanglei Zhao <z12y12l12 [AT] gmail [DOT] com>'
 
 import wx
+from wx.lib.mixins.listctrl import TextEditMixin, CheckListCtrlMixin
+import os
+
+import config
 
 class MiscPanel(wx.Panel):
     """
     The misc panel of the feedesk config GUI.
     """
-    def __init__(self, parent):
+    def __init__(self, parent, cfg):
         """
         Initialize misc panel.
         """
         wx.Panel.__init__(self,parent)
+
+        self.cfg = cfg
+        self.update_choices = ('Default', 'Random', 'Suffle', 'Latest')
 
         # Select Interval of feed
         feed_txt = wx.StaticText(self, label='Feed update interval (min):')
@@ -46,7 +53,7 @@ class MiscPanel(wx.Panel):
 
         # Select the type of wallpaper update.
         update_txt = wx.StaticText(self, label='Wallpaper update type:')
-        self.update_cb = wx.Choice(self, wx.ID_ANY, choices=('Default', 'Random', 'Suffle', 'Latest'), style=wx.CB_READONLY) 
+        self.update_cb = wx.Choice(self, wx.ID_ANY, choices=self.update_choices, style=wx.CB_READONLY) 
 
         bold_font = wx.Font(10, wx.DEFAULT, wx.NORMAL, wx.BOLD)
 
@@ -56,10 +63,10 @@ class MiscPanel(wx.Panel):
 
 
         width_txt = wx.StaticText(self, label='Width:')
-        self.width_sc = wx.SpinCtrl(self, wx.ID_ANY, '1024', min=1, max=9999)
+        self.width_sc = wx.SpinCtrl(self, wx.ID_ANY, '1024', min=320, max=16000)
 
         height_txt = wx.StaticText(self, label='Height:')
-        self.height_sc = wx.SpinCtrl(self, wx.ID_ANY, '768', min=1, max=9999)
+        self.height_sc = wx.SpinCtrl(self, wx.ID_ANY, '768', min=240, max=12000)
 
         # The sizer
         grid_sizer = wx.FlexGridSizer(0, 2)
@@ -82,25 +89,64 @@ class MiscPanel(wx.Panel):
         self.SetAutoLayout(True)
         grid_sizer.Fit(self)
 
+        self.load_options()
+
+    def load_options(self):
+        self.feed_sc.SetValue(self.cfg.getint('interval_feed'))
+        self.wall_sc.SetValue(self.cfg.getint('interval_wallpaper'))
+        self.width_sc.SetValue(self.cfg.getint('screen_width'))
+        self.height_sc.SetValue(self.cfg.getint('screen_height'))
+
+        t = self.cfg.get('type')
+        if t not in self.update_choices:
+            t = 'Default'
+        self.update_cb.SetSelection(self.update_choices.index(t))
+
+    def save_options(self):
+        self.cfg.set('interval_feed', self.feed_sc.GetValue())
+        self.cfg.set('interval_wallpaper', self.wall_sc.GetValue())
+        self.cfg.set('screen_width', self.width_sc.GetValue())
+        self.cfg.set('screen_height', self.height_sc.GetValue())
+
+        self.cfg.set('type', self.update_choices[self.update_cb.GetSelection()])
+
+class FeedListCtrl(wx.ListCtrl, TextEditMixin, CheckListCtrlMixin):
+    """
+    The Feed List Control
+    """
+    def __init__(self, parent, id=-1, pos=wx.DefaultPosition,
+                 size=wx.DefaultSize):
+        wx.ListCtrl.__init__(self, parent, id, pos, size,
+            style=wx.LC_REPORT | wx.SUNKEN_BORDER)
+        TextEditMixin.__init__(self)
+        CheckListCtrlMixin.__init__(self)
+        self.InsertColumn(0, 'URL')
+        self.SetColumnWidth(0, size[1] - 60)
+
 class FeedPanel(wx.Panel):
     """
     The feed panel for feedesk config GUI.
     """
-    def __init__(self, parent):
+    def __init__(self, parent, cfg):
         wx.Panel.__init__(self, parent)
 
-        # The left (list box)
-        self.feed_list = wx.ListBox(self, size=(250, 300))
+        self.cfg = cfg
+
+        # The left (FeedListCtrl)
+        self.feed_list = FeedListCtrl(self, size=(250, 300))
+        #self.feed_list = wx.ListBox(self, size=(250, 300))
         
         # The right (Buttons on a vbox)
         self.add = wx.Button(self, label='Add')
-        self.edit = wx.Button(self, label = 'Edit')
         self.delete = wx.Button(self, label='Delete')
         
         vbox = wx.BoxSizer(wx.VERTICAL)
         vbox.Add(self.add, 0, wx.TOP, 5)
-        vbox.Add(self.edit, 0, wx.TOP, 5)
         vbox.Add(self.delete, 0, wx.TOP, 5)
+
+        # Bind events
+        self.add.Bind(wx.EVT_BUTTON, self._on_add_click)
+        self.delete.Bind(wx.EVT_BUTTON, self._on_delete_click)
         
         # The sizer
         hbox = wx.BoxSizer(wx.HORIZONTAL)
@@ -111,26 +157,56 @@ class FeedPanel(wx.Panel):
         self.SetAutoLayout(True)
         hbox.Fit(self)
 
+        self.load_feeds()
+
+    def load_feeds(self):
+        feeds = self.cfg.get_all_feeds()
+        for i, (url, enabled) in enumerate(feeds):
+            self.feed_list.Append((url,))
+            if enabled:
+                self.feed_list.ToggleItem(i)
+
+    def save_feeds(self):
+        feeds = []
+        for i in xrange(self.feed_list.GetItemCount()):
+            feeds.append((
+                self.feed_list.GetItem(i, 0).GetText(),
+                self.feed_list.IsChecked(i)))
+
+        self.cfg.clear_feeds()
+        self.cfg.set_feeds(feeds)
+
+    def _on_add_click(self, event):
+        self.feed_list.Append(('http://',))
+
+    def _on_delete_click(self, event):
+        item = self.feed_list.GetFirstSelected()
+        while item != -1:
+            self.feed_list.DeleteItem(item)
+            item = self.feed_list.GetNextSelected(item - 1)
+
 class ConfigWindow(wx.Frame):
     """
     The main window of the feedesk config GUI.
     """
-    def __init__(self, parent):
+    def __init__(self, parent, cfg):
         """
         Initialize the main window.
         """
         wx.Frame.__init__(self, parent, title='feedesk', size=(320, 350))
 
+        self.cfg = cfg
+
         # The top (a notebook)
         nb = wx.Notebook(self, style=wx.NB_TOP)
 
         # Feed panel
-        feed_panel = FeedPanel(nb)
-        nb.AddPage(feed_panel, 'Feed')
+        self.feed_panel = FeedPanel(nb, cfg)
+        nb.AddPage(self.feed_panel, 'Feed')
 
         # Misc panel
-        misc_panel = MiscPanel(nb)
-        nb.AddPage(misc_panel, 'Misc')
+        self.misc_panel = MiscPanel(nb, cfg)
+        nb.AddPage(self.misc_panel, 'Misc')
 
         # The bottom (a sizer with two buttons)
         self.save = wx.Button(self, label='Save')
@@ -139,21 +215,44 @@ class ConfigWindow(wx.Frame):
         hbox = wx.BoxSizer(wx.HORIZONTAL)
         hbox.Add(self.save, 1, wx.EXPAND | wx.RIGHT, 5)
         hbox.Add(self.cancel, 1, wx.EXPAND | wx.LEFT, 5)
+
+        # Bind events
+        self.save.Bind(wx.EVT_BUTTON, self._on_save_click)
+        self.cancel.Bind(wx.EVT_BUTTON, self._on_cancel_click)
         
         # The sizer
         vbox = wx.BoxSizer(wx.VERTICAL)
         vbox.Add(nb, 1, wx.EXPAND | wx.ALL, 10)
         vbox.Add(hbox, 0, wx.EXPAND | wx.RIGHT | wx.LEFT | wx.BOTTOM, 10)
-        
+
+        # Load settings
+
         # Set sizer
         self.SetSizer(vbox)
         self.SetAutoLayout(True)
         vbox.Fit(self)
         self.Show(True)
 
+    def _on_save_click(self, event):
+        '''
+        Save the options in to config file.
+        '''
+        self.feed_panel.save_feeds()
+        self.misc_panel.save_options()
+        self.cfg.save()
+    
+    def _on_cancel_click(self, event):
+        '''
+        Exit the gui_config.
+        '''
+        self.Destroy()
+
 def main():
+    config.create_app_dir()
+    cfg = config.Config(os.path.join(config.get_home_path(), '.feedesk', '.feedesk'))
+
     app = wx.App(False)
-    frame = ConfigWindow(None)
+    frame = ConfigWindow(None, cfg)
     app.MainLoop()
 
 if __name__ == '__main__':
